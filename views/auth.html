@@ -1,0 +1,106 @@
+{{define "title"}}{{if eq .AppLang "ru"}}Авторизация{{else}}Авторизація{{end}} — {{.AppTitle}}{{end}}
+{{define "header"}}{{if eq .AppLang "ru"}}Авторизация{{else}}Авторизація{{end}}{{end}}
+
+{{define "body"}}
+    <div class="content">
+        <div class="loader" id="loader"></div>
+        <div id="confirm" style="display: none;">
+            {{if eq .AppLang "ru"}}
+                <p>Пожалуйста, подтвердите авторизацию нового устройства.</p>
+            {{else}}
+                <p>Будь ласка, підтвердіть авторизацію нового пристрою.</p>
+            {{end}}
+
+            <div class="code">
+                <span class="code-fake">13</span>
+                <span id="confirmCode">xx</span>
+                <span class="code-fake">00</span>
+            </div>
+
+            {{if eq .AppLang "ru"}}
+                <p>Для этого нажмите кнопку с указанным выше числом в уведомлении о новой авторизации в диалоге с telegram-ботом @{{.BotUsername}}.</p>
+            {{else}}
+                <p>Для цього натисніть кнопку з указаним вище числом у сповіщенні про нову авторизацію в діалозі з telegram-ботом @{{.BotUsername}}.</p>
+            {{end}}
+        </div>
+        <div id="success" style="display: none;">
+            <div class="success"></div>
+            {{if eq .AppLang "ru"}}
+                <p>Авторизация успешно подтверждена. В течении нескольких секунд вы вернетесь в приложение.</p>
+            {{else}}
+                <p>Авторизацію успішно підтверджено. Протягом кількох секунд ви повернетесь до додатка.</p>
+            {{end}}
+        </div>
+        <div id="notFound" style="display: none;">
+            <div class="error"></div>
+            {{if eq .AppLang "ru"}}
+                <p>Неудалось авторизироваться, возможно учетная запись отключена.</p>
+            {{else}}
+                <p>Не вдалося авторизуватися, можливо, обліковий запис відключено.</p>
+            {{end}}
+        </div>
+    </div>
+{{end}}
+
+{{define "scripts"}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var loader = document.getElementById('loader');
+            var confirm = document.getElementById('confirm');
+            var confirmCode = document.getElementById('confirmCode');
+            var success = document.getElementById('success');
+            var notFound = document.getElementById('notFound');
+
+            function validateAuth() {
+                return fetch('/auth', {
+                    method: 'POST',
+                    redirect: 'error',
+                }).then(function(response) {
+                    // Authorized
+                    if (response.status === 200) {
+                        loader.style.display = 'none';
+                        confirm.style.display = 'none';
+                        notFound.style.display = 'none';
+                        success.style.display = 'block';
+
+                        window.location.href = '/';
+                        return true;
+                    }
+
+                    // Not found
+                    if (response.status === 404 || response.status === 403) {
+                        loader.style.display = 'none';
+                        confirm.style.display = 'none';
+                        notFound.style.display = 'block';
+                        success.style.display = 'none';
+
+                        return false;
+                    }
+
+                    // Unauthorized
+                    if (response.status === 401) {
+                        loader.style.display = 'none';
+                        confirm.style.display = 'block';
+                        notFound.style.display = 'none';
+                        success.style.display = 'none';
+
+                        response.json().then(function(data) {
+                            confirmCode.innerText = data.code;
+                        });
+                    }
+
+                    // Refetch
+                    var timeout = 3000;
+                    if (document.hidden) {
+                        timeout = 8000;
+                    }
+                    setTimeout(validateAuth, timeout);
+
+                    return false;
+                })
+            }
+
+            setTimeout(validateAuth, 1500);
+        });
+    </script>
+{{end}}
